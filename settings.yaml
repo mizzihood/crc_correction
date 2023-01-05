@@ -2,7 +2,10 @@
  # x,y plane configuration
  side_x: 4
  side_y: 2.236067977499790
- diagonal_from_x0y0: 5.385164807134504
+ # narrow x/y angle 
+ # diagonal_from_x0y0: 5.385164807134504
+ # wide x/y angle 
+ diagonal_from_x0y0: 3.605551275463989
  # x,z and y,z plane configuration
  height: 1000
  z_to_x: 0
