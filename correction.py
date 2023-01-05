@@ -12,6 +12,7 @@ logging.basicConfig(
     format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'
 )
 
+
 # The systems have a common origin.
 # a is parallel to x.
 # The ab plane is in the xy plane.
@@ -65,13 +66,13 @@ class Correction:
         b = self.cfg['side_y']
         q = self.cfg['diagonal_from_x0y0']
         # w is addition to a so the b,a+w|q form a right triangle
-        w = (q**2 - (a**2 + b**2))/(2 * a)
+        w = (q ** 2 - (a ** 2 + b ** 2)) / (2 * a)
         logging.info(f"--- x,y plane---")
         logging.info(f"nominal move in x direction:     {a:.3f}")
         logging.info(f"nominal move in y direction:     {b:.3f}")
         logging.info(f"diagonal originating in x,y=0:   {q:.3f}")
         logging.info(f"y move projected to x axis:      {w:.3f}")
-        self.angle_ab = np.arccos(w/b)
+        self.angle_ab = np.arccos(w / b)
         logging.info(f"angle between x and y:           {math.degrees(self.angle_ab):.3f}")
 
         # calculate angle_ac and angle_bc
@@ -144,11 +145,13 @@ class Correction:
 
 
 def print_fn():
-    print("Hi")
+    print("Hia")
 
 
-def sum_fn(a, b):
-    print(a + b)
+def run_with_params(file_in_name, file_out_name):
+    print(file_in_name + file_out_name)
+    c = Correction()
+    c.parse_file(file_in_name, file_out_name)
 
 
 if __name__ == "__main__":
