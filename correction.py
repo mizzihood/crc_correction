@@ -11,6 +11,7 @@ logging.basicConfig(
     filemode='w',
     format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'
 )
+logger = logging.getLogger(__name__)
 
 
 # The systems have a common origin.
@@ -34,11 +35,9 @@ class Correction:
         self.xyz_original = np.array([0., 0., 0.])
         self.xyz_original.shape = (3, 1)
 
-        self.xyz_transformed = np.array([0., 0., 0.])
-        self.xyz_transformed.shape = (3, 1)
+        self.xyz_translated = np.array([0., 0., 0.])
+        self.xyz_translated.shape = (3, 1)
 
-        self.new_xyz_transformed = np.array([0., 0., 0.])
-        self.new_xyz_transformed.shape = (3, 1)
         # initialize from default file
         self.cfg = dict()
         self.configure('settings.yaml')
@@ -67,26 +66,26 @@ class Correction:
         q = self.cfg['diagonal_from_x0y0']
         # w is addition to a so the b,a+w|q form a right triangle
         w = (q ** 2 - (a ** 2 + b ** 2)) / (2 * a)
-        logging.info(f"--- x,y plane---")
-        logging.info(f"nominal move in x direction:     {a:.3f}")
-        logging.info(f"nominal move in y direction:     {b:.3f}")
-        logging.info(f"diagonal originating in x,y=0:   {q:.3f}")
-        logging.info(f"y move projected to x axis:      {w:.3f}")
+        logger.info(f"--- x,y plane---")
+        logger.info(f"nominal move in x direction:     {a:.3f}")
+        logger.info(f"nominal move in y direction:     {b:.3f}")
+        logger.info(f"diagonal originating in x,y=0:   {q:.3f}")
+        logger.info(f"y move projected to x axis:      {w:.3f}")
         self.angle_ab = np.arccos(w / b)
-        logging.info(f"angle between x and y:           {math.degrees(self.angle_ab):.3f}")
+        logger.info(f"angle between x and y:           {math.degrees(self.angle_ab):.3f}")
 
         # calculate angle_ac and angle_bc
-        logging.info(f"--- x,z and y,z plane---")
+        logger.info(f"--- x,z and y,z plane---")
         h = self.cfg['height']
         x = self.cfg['z_to_x']
-        logging.info(f"nominal move in z direction:     {h:.3f}")
-        logging.info(f"offset on x axis:                {x:.3f}")
+        logger.info(f"nominal move in z direction:     {h:.3f}")
+        logger.info(f"offset on x axis:                {x:.3f}")
         self.angle_ac = np.arctan2(h, x)
-        logging.info(f"angle between x and z:           {math.degrees(self.angle_ac):.3f}")
+        logger.info(f"angle between x and z:           {math.degrees(self.angle_ac):.3f}")
         y = self.cfg['z_to_y']
-        logging.info(f"offset on y axis:                {y:.3f}")
+        logger.info(f"offset on y axis:                {y:.3f}")
         self.angle_bc = np.arctan2(h, y)
-        logging.info(f"angle between y and z:           {math.degrees(self.angle_bc):.3f}")
+        logger.info(f"angle between y and z:           {math.degrees(self.angle_bc):.3f}")
 
     def _calculate_matrix(self):
         temp_x3 = np.cos(self.angle_ac)
@@ -98,58 +97,54 @@ class Correction:
         ])
         self.T = np.linalg.inv(self.T)
 
-    def transform(self, point):
+    def translate(self, point):
         return self.T * point
 
     def _parse_line(self, line):
+        logger.debug(f"Line: {line.strip()}")
         tokens = line.split()
         tokens_out = list()
         coordinate_low_index = -1
         for index, token in enumerate(tokens):
             if token[0] in self.XYZ:
                 if coordinate_low_index < 0:
+                    logger.debug(f"First coordinate position in line: {index}")
                     coordinate_low_index = index
-
                 value = float(token[1:])
                 self.xyz_original[self.XYZ.index(token[0])] = value
+
             else:
                 tokens_out.append(token)
-        new_xyz_transformed = np.round(
-            self.transform(self.xyz_original),
+        new_xyz_translated = np.round(
+            self.translate(self.xyz_original),
             decimals=3
         )
-        self.new_xyz_transformed = new_xyz_transformed
+        logger.debug(f"New nominal position: {np.array2string(self.xyz_original.transpose(), precision=3)}")
+        logger.debug(f"New transp. position: {np.array2string(new_xyz_translated.transpose(), precision=3)}")
         if coordinate_low_index >= 0:
-            for index, coordinate in enumerate(new_xyz_transformed):
-                new = new_xyz_transformed.item(index)
-                old = self.xyz_transformed.item(index)
+            for index, coordinate in enumerate(new_xyz_translated):
+                new = new_xyz_translated.item(index)
+                old = self.xyz_translated.item(index)
                 if new != old:
                     tokens_out.insert(
                         coordinate_low_index,
                         f"{self.XYZ[index]}{new:.3f}"
                     )
                     coordinate_low_index += 1
-            self.xyz_transformed = new_xyz_transformed
-
-        print(tokens_out)
+            self.xyz_translated = new_xyz_translated
 
         return ' '.join([token for token in tokens_out])
 
     def parse_file(self, file_in_path, file_out_path):
         with open(file_in_path) as f_in, open(file_out_path, 'w') as f_out:
+            logger.info(f"Opened source file {file_in_path}, destination file {file_out_path}")
             lines = f_in.readlines()
             for line in lines:
                 line_out = self._parse_line(line)
                 f_out.write(line_out + '\n')
-                print(line_out)
-
-
-def print_fn():
-    print("Hia")
 
 
 def run_with_params(file_in_name, file_out_name):
-    print(file_in_name + file_out_name)
     c = Correction()
     c.parse_file(file_in_name, file_out_name)
 
@@ -159,5 +154,5 @@ if __name__ == "__main__":
     # args[0] = current file
     # args[1] = function name
     # args[2:] = function args : (*unpacked)
-
-    globals()[args[1]](*args[2:])
+    if len(args) > 1:
+        globals()[args[1]](*args[2:])

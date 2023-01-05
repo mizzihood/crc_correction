@@ -1,7 +1,14 @@
 ---
+ # x,y plane configuration
  side_x: 4
  side_y: 2.236067977499790
  diagonal_from_x0y0: 5.385164807134504
+ # x,z and y,z plane configuration
  height: 1000
  z_to_x: 0
  z_to_y: 0
+ # static offset x,y,z
+ compensate_for_negative: true
+ x_offset: 0
+ y_offset: 0
+ z_offset: 0
