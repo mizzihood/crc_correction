@@ -1,17 +1,27 @@
 ---
  # x,y plane configuration
- side_x: 4
- side_y: 2.236067977499790
- # narrow x/y angle 
- # diagonal_from_x0y0: 5.385164807134504
- # wide x/y angle 
- diagonal_from_x0y0: 3.605551275463989
- # x,z and y,z plane configuration
- height: 1000
- z_to_x: 0
- z_to_y: 0
- # static offset x,y,z
- compensate_for_negative: true
- x_offset: 0
- y_offset: 0
- z_offset: 0
+translation:
+  side_x: 1
+  side_y: 1
+  diagonal_from_x0y0: 1.4142135623730951
+
+  #side_x: 4
+  #side_y: 2.236067977499790
+  # narrow x/y angle
+  #diagonal_from_x0y0: 5.385164807134504
+  # wide x/y angle
+  #diagonal_from_x0y0: 3.605551275463989
+  # x,z and y,z plane configuration
+  height: 10
+  z_to_x: 1
+  z_to_y: 2
+  # static offset x,y,z (unsupported)
+  # auto_compensate_for_negative: true
+  # offset: [0,0,0]
+limits:
+   lower: [0,0,0]
+   upper: [1100,1200,1300]
+
+
+
+

@@ -35,8 +35,14 @@ class Correction:
         self.xyz_original = np.array([0., 0., 0.])
         self.xyz_original.shape = (3, 1)
 
-        self.xyz_translated = np.array([0., 0., 0.])
+        self.xyz_translated = np.array([np.NaN, np.NaN, np.NaN])
         self.xyz_translated.shape = (3, 1)
+
+        self.xyz_upper_limits = np.array([0., 0., 0.])
+        self.xyz_upper_limits.shape = (3, 1)
+
+        self.xyz_lower_limits = np.array([0., 0., 0.])
+        self.xyz_lower_limits.shape = (3, 1)
 
         # initialize from default file
         self.cfg = dict()
@@ -61,9 +67,10 @@ class Correction:
 
     def _parse_parameters(self):
         # calculate angle_ab by solving the parallelogram
-        a = self.cfg['side_x']
-        b = self.cfg['side_y']
-        q = self.cfg['diagonal_from_x0y0']
+        translation_cfg = self.cfg['translation']
+        a = translation_cfg['side_x']
+        b = translation_cfg['side_y']
+        q = translation_cfg['diagonal_from_x0y0']
         # w is addition to a so the b,a+w|q form a right triangle
         w = (q ** 2 - (a ** 2 + b ** 2)) / (2 * a)
         logger.info(f"--- x,y plane---")
@@ -76,16 +83,22 @@ class Correction:
 
         # calculate angle_ac and angle_bc
         logger.info(f"--- x,z and y,z plane---")
-        h = self.cfg['height']
-        x = self.cfg['z_to_x']
+        h = translation_cfg['height']
+        x = translation_cfg['z_to_x']
         logger.info(f"nominal move in z direction:     {h:.3f}")
         logger.info(f"offset on x axis:                {x:.3f}")
         self.angle_ac = np.arctan2(h, x)
         logger.info(f"angle between x and z:           {math.degrees(self.angle_ac):.3f}")
-        y = self.cfg['z_to_y']
+        y = translation_cfg['z_to_y']
         logger.info(f"offset on y axis:                {y:.3f}")
         self.angle_bc = np.arctan2(h, y)
         logger.info(f"angle between y and z:           {math.degrees(self.angle_bc):.3f}")
+
+        limits_cfg = self.cfg['limits']
+        self.xyz_upper_limits = np.array(limits_cfg['upper'])
+        self.xyz_upper_limits.shape = (3, 1)
+        self.xyz_lower_limits = np.array(limits_cfg['lower'])
+        self.xyz_lower_limits.shape = (3, 1)
 
     def _calculate_matrix(self):
         temp_x3 = np.cos(self.angle_ac)
@@ -99,6 +112,20 @@ class Correction:
 
     def translate(self, point):
         return self.T * point
+
+    def _validate(self, xyz):
+        for index in [index for index, value in enumerate(xyz > self.xyz_upper_limits) if value]:
+            logger.warning(
+                    f"translated axis {self.XYZ[index]} is above upper limit: " +
+                    f"{xyz.item(index):.3f} > " +
+                    f"{self.xyz_upper_limits.item(index): .3f}"
+            )
+        for index in [index for index, value in enumerate(xyz < self.xyz_lower_limits) if value]:
+            logger.warning(
+                    f"translated axis {self.XYZ[index]} is below lower limit: " +
+                    f"{xyz.item(index):.3f} < " +
+                    f"{self.xyz_lower_limits.item(index): .3f}"
+            )
 
     def _parse_line(self, line):
         logger.debug(f"Line: {line.strip()}")
@@ -120,7 +147,9 @@ class Correction:
             decimals=3
         )
         logger.debug(f"New nominal position: {np.array2string(self.xyz_original.transpose(), precision=3)}")
-        logger.debug(f"New transp. position: {np.array2string(new_xyz_translated.transpose(), precision=3)}")
+        logger.debug(f"New transl. position: {np.array2string(new_xyz_translated.transpose(), precision=3)}")
+        self._validate(new_xyz_translated)
+
         if coordinate_low_index >= 0:
             for index, coordinate in enumerate(new_xyz_translated):
                 new = new_xyz_translated.item(index)
@@ -144,7 +173,7 @@ class Correction:
                 f_out.write(line_out + '\n')
 
 
-def run_with_params(file_in_name, file_out_name):
+def run_with_params(file_in_name, file_out_name, settings_file='settings.yaml'):
     c = Correction()
     c.parse_file(file_in_name, file_out_name)
 
