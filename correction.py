@@ -154,12 +154,12 @@ class Correction:
             for index, coordinate in enumerate(new_xyz_translated):
                 new = new_xyz_translated.item(index)
                 old = self.xyz_translated.item(index)
-                if new != old:
-                    tokens_out.insert(
-                        coordinate_low_index,
-                        f"{self.XYZ[index]}{new:.3f}"
-                    )
-                    coordinate_low_index += 1
+#                if new != old:
+                tokens_out.insert(
+                    coordinate_low_index,
+                    f"{self.XYZ[index]}{new:.3f}"
+                )
+                coordinate_low_index += 1
             self.xyz_translated = new_xyz_translated
 
         return ' '.join([token for token in tokens_out])
