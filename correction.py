@@ -1,17 +1,26 @@
+import logging
+from logging.handlers import RotatingFileHandler
+import math
 import sys
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import yaml
-import logging
-import math
 
-logging.basicConfig(
-    filename='cnc.log',
-    level=logging.DEBUG,
-    filemode='w',
-    format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'
-)
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+
+logFile = 'C:\\cnc_correction\\cnc.log'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
+                                 backupCount=10, encoding=None, delay=0)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+logger.addHandler(my_handler)
+
 
 
 # The systems have a common origin.
@@ -25,18 +34,12 @@ logger = logging.getLogger(__name__)
 class Correction:
     XYZ = ('X', 'Y', 'Z')
 
-    def __init__(self):
+    def __init__(self, settings_file="settings.yaml"):
         self.angle_ab = np.pi / 2
         self.angle_ac = np.pi / 2
         self.angle_bc = np.pi / 2
 
         self.T = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-
-        self.xyz_original = np.array([0., 0., 0.])
-        self.xyz_original.shape = (3, 1)
-
-        self.xyz_translated = np.array([np.NaN, np.NaN, np.NaN])
-        self.xyz_translated.shape = (3, 1)
 
         self.xyz_upper_limits = np.array([0., 0., 0.])
         self.xyz_upper_limits.shape = (3, 1)
@@ -46,7 +49,14 @@ class Correction:
 
         # initialize from default file
         self.cfg = dict()
-        self.configure('settings.yaml')
+        self.configure(settings_file)
+
+    def _init_coordinates(self):
+        self.xyz_original = np.array([0., 0., 0.])
+        self.xyz_original.shape = (3, 1)
+
+        self.xyz_translated = np.array([np.NaN, np.NaN, np.NaN])
+        self.xyz_translated.shape = (3, 1)
 
     def configure(self, file_name=''):
         if file_name != '':
@@ -165,18 +175,28 @@ class Correction:
         return ' '.join([token for token in tokens_out])
 
     def parse_file(self, file_in_path, file_out_path):
+
+        self._init_coordinates()
         with open(file_in_path) as f_in, open(file_out_path, 'w') as f_out:
+
+            now = datetime.now()
+            dt_string = now.strftime("%Y/%m/%d %H:%M:%S")
+            f_out.write(";Izvorna datoteka   : " + file_in_path  + "\n")
+            f_out.write(";Ustvarjena datoteka: " + file_out_path + "\n")
+            f_out.write(";Datum obdelave     : " + dt_string     + "\n")
+
             logger.info(f"Opened source file {file_in_path}, destination file {file_out_path}")
             lines = f_in.readlines()
             for line in lines:
                 line_out = self._parse_line(line)
                 f_out.write(line_out + '\n')
 
-
-def run_with_params(file_in_name, file_out_name, settings_file='settings.yaml'):
+def run_with_params(file_in_name, file_out_name="", settings_file='settings.yaml'):
     c = Correction()
-    c.parse_file(file_in_name, file_out_name)
+    if file_out_name == "":
+        file_out_name = Path(file_in_name).stem + "_M_"+ Path(file_in_name).suffix;
 
+    c.parse_file(file_in_name, file_out_name)
 
 if __name__ == "__main__":
     args = sys.argv
